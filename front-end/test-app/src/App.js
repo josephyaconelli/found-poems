@@ -2,16 +2,54 @@ import React, { useEffect, useState } from 'react'
 import './App.css';
 import { ConnectionManager } from './ConnectionManager';
 import { socket } from './socket';
+import axios from 'axios'
+import Countdown from 'react-countdown'
 
+
+const updateDoc = (text) => {
+  return axios.post('http://10.0.0.43:3000/set', {
+    url: text
+  })
+}
+
+const getDoc = () => {
+  return axios.get('http://10.0.0.43:3000/document')
+}
 
 const App = () => {
 
   const [isConnected, setIsConnected] = useState(socket.isConnected);
-  const [events, setEvents] = useState([])
+  const [localChange, setLocalChange] = useState(false)
   const [document, setDocument] = useState("a bunch of text like this".split(' '))
+  const [expiresTime, setExpiresTime] = useState()
+  const [expired, setExpired] = useState(false)
+  const [docSub, setDocSub] = useState('')
+
+  const handleUpdateDoc = async () => {
+    const res = await updateDoc(docSub)
+    if (res.status === 200) {
+      const { document, expires } = res.data
+      setDocument(document)
+      setExpiresTime(new Date(expires))
+    }
+  }
 
   useEffect(() => {
-    socket.emit('chat message', document);
+    getDoc().then(res => {
+      if (res.status === 200) {
+        const { document, expires }= res.data
+        setDocument(document)
+        setExpiresTime(new Date(expires))
+        setExpired(new Date() > new Date(expires))
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (localChange) {
+      socket.emit('documentUpdate', document);
+      setLocalChange(false)
+    }
   }, [document])
   
   useEffect(() => {
@@ -24,7 +62,7 @@ const App = () => {
     }
 
     function onEvent(value) {
-      setEvents(prev => [...prev, value])
+      setDocument(value)
     }
 
     socket.on('connect', onConnect)
@@ -38,16 +76,42 @@ const App = () => {
     }
   }, [])
 
-
+/*
+Alternative ideas:
+  1. Some percentage are assigned as "savers" who instead mark words to keep
+  2. Each person gets X (3, 5, 10?) words to mark for keep in addition to deletion
+  3. People only get to mark X words for keep, and the computer continuously deletes words until all that's left is whats kept by users
+  4. make all these things (+ expires times, source, etc, # keeprs, # removes, or what is enabled/disabled etc) configurable and people will spin up "Spaces" with their settings (and maybe link per poem space generated?)
+*/ 
 
   return (
     <div className="App">
-      <div><span>Connetion Status: {isConnected ? 'connected' : 'disconnected'}</span></div>
-      {document.map((word, i) => (<span onClick={() => setDocument(d => d.filter((_, idx) => i !== idx))}>{word}&nbsp;</span>))}
+      <div style={{ overflowWrap: true, textAlign: 'justify' }}>
+      {document.map((word, i) => (<span onClick={() => {
+        if (!expired) {
+          setLocalChange(true)
+          setDocument(d => d.filter((_, idx) => i !== idx))
+        }
+      }}>{word} </span>))}
+      </div>
+      <br/><br/>
+      <input onChange={e => setDocSub(e.target.value)} disabled={!expired}></input>
       <br/>
+      <button onClick={handleUpdateDoc} disabled={!expired}>Submit Document</button>
+      <div>
+        {
+          expiresTime && !expired ? (
+            <span>Expires in <Countdown date={expiresTime} onComplete={() => setExpired(true)} /></span>
+          ) : (
+            <span>The timer has expired! This poem is complete. Anyone is welcome to submit a document now for the next poem.</span>
+          )
+        }
+      </div>
+      <br/><br/>
+      <div><span>Connection Status: {isConnected ? 'connected' : 'disconnected'}</span></div>
       <ConnectionManager/>
     </div>
-  );
+);
 }
 
 export default App;
