@@ -86,8 +86,8 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(80, () => {
-  console.log('listening on *:80');
+server.listen(443, () => {
+  console.log('listening on *:443');
 });
 
 io.listen(3000);
