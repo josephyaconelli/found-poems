@@ -7,13 +7,13 @@ import Countdown from 'react-countdown'
 
 
 const updateDoc = (text) => {
-  return axios.post('http://10.0.0.43:3000/set', {
+  return axios.post(`${process.env.API_ADDRESS}/set`, {
     url: text
   })
 }
 
 const getDoc = () => {
-  return axios.get('http://10.0.0.43:3000/document')
+  return axios.get(`${process.env.API_ADDRESS}/document`)
 }
 
 const App = () => {
