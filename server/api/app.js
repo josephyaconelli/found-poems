@@ -1,8 +1,8 @@
 const express = require('express');
 const app = express();
-const http = require('http');
+const https = require('https');
 const cors = require('cors')
-const server = http.createServer(app);
+const server = https.createServer(app);
 const { Server } = require("socket.io");
 const bodyParser = require('body-parser')
 const { extract } = require('@extractus/article-extractor')
